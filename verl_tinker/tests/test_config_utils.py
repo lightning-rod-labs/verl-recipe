@@ -441,11 +441,21 @@ def test_tinker_config_defaults_to_fsdp_when_actor_strategy_is_missing():
     assert config.actor_rollout_ref.actor.fsdp_config.model_dtype == "bfloat16"
 
 
-def test_tinker_config_honors_explicit_unsupported_actor_strategy():
+def test_tinker_config_keeps_fsdp2_actor_strategy():
     config = _minimal_tinker_config()
     config.actor_rollout_ref.actor.strategy = "fsdp2"
 
-    with pytest.raises(ValueError, match="actor_rollout_ref.actor.strategy='fsdp2' is not supported"):
+    config = process_actor_rollout_ref_config(config)
+
+    assert config.actor_rollout_ref.actor.strategy == "fsdp2"
+    assert config.actor_rollout_ref.actor._target_ == "verl.workers.config.FSDPActorConfig"
+
+
+def test_tinker_config_honors_explicit_unsupported_actor_strategy():
+    config = _minimal_tinker_config()
+    config.actor_rollout_ref.actor.strategy = "deepspeed"
+
+    with pytest.raises(ValueError, match="actor_rollout_ref.actor.strategy='deepspeed' is not supported"):
         process_actor_rollout_ref_config(config)
 
 
