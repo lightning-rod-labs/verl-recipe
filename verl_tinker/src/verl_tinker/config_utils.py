@@ -13,6 +13,7 @@ _ACTOR_CHECKPOINT_CONTENTS = ["model", "optimizer", "extra", "hf_model"]
 _VERL_SECTION_DEFAULT_CONFIG_BY_STRATEGY = {
     "dp": "_generated_ppo_trainer.yaml",
     "fsdp": "_generated_ppo_trainer.yaml",
+    "fsdp2": "_generated_ppo_trainer.yaml",
     "veomni": "_generated_ppo_veomni_trainer.yaml",
     "megatron": "_generated_ppo_megatron_trainer.yaml",
     "torchtitan": "_generated_ppo_torchtitan_trainer.yaml",
