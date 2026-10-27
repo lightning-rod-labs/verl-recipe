@@ -568,9 +568,10 @@ def _datums_to_topk_distill_td(
 
     The j1 axis aligns with verl's ``input_ids.offsets()`` over the full
     valid_len, same convention used by verl's ``log_probs`` jagged tensor
-    in ``prepare_model_outputs``. To match this we pad both teacher
-    tensors with one leading row of zeros (matching ``loss_mask[0]=0`` so
-    the roll-by-(-1) discards the wrap position).
+    in ``prepare_model_outputs``. Teacher rows are already in prediction
+    order: pad them at the end, since the logit processor consumes them
+    directly. Only the loss mask has a leading zero for the final loss's
+    roll-by-(-1).
     """
     if not datums:
         raise HTTPException(
@@ -642,18 +643,17 @@ def _datums_to_topk_distill_td(
         loss_mask = torch.zeros(valid_len, dtype=torch.float32)
         loss_mask[1:] = per_pos_active
 
-        # teacher_ids / teacher_logprobs: pad with a zero row at
-        # position 0 (wrap slot) so the j1 axis matches input_ids' valid_len.
-        # verl rolls these by -1 alongside the loss_mask to align with the
-        # student logits at predict-next-token positions.
+        # Teacher row i belongs to input logit i; neither eager nor fused
+        # top-K processing shifts it. The extra final logit is masked out.
+        # Leading padding here would score each target one token too late.
         ids_padded = torch.zeros(valid_len, K, dtype=torch.long)
-        ids_padded[1:] = target
+        ids_padded[:-1] = target
         lp_padded = torch.full((valid_len, K), LOG_PROB_MIN_CLAMP, dtype=torch.float32)
         # log(weights) with -10.0 clamp on zeros so exp() yields ~0.
         log_weights = torch.where(
             weights > 0, weights.clamp_min(1e-12).log(), torch.full_like(weights, LOG_PROB_MIN_CLAMP)
         )
-        lp_padded[1:] = log_weights
+        lp_padded[:-1] = log_weights
 
         per_sample_fulls.append(full)
         per_sample_positions.append(torch.arange(valid_len, dtype=torch.long))
