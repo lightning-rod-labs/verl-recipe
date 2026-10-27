@@ -626,8 +626,12 @@ async def test_unnamed_sampler_saves_return_distinct_sampler_ids(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_load_skips_engine_when_checkpoint_actor_is_already_loaded(tmp_path, monkeypatch):
+@pytest.mark.parametrize("optimizer", [True, False])
+async def test_load_preserves_gradient_reset_when_checkpoint_actor_is_already_loaded(tmp_path, monkeypatch, optimizer):
     server = object.__new__(_router_class())
+    server._shutdown_started = False
+    server._status = ServerStatus.INITIALIZED
+    server._engine = MagicMock()
     _init_model_resource_manager(server)
     uri = "tinker://verl-tinker/state/already-loaded"
     local_dir = tmp_path / "already-loaded"
@@ -635,13 +639,18 @@ async def test_load_skips_engine_when_checkpoint_actor_is_already_loaded(tmp_pat
     server._checkpoint_root = str(tmp_path)
     server._saved_state_paths = {uri: str(local_dir)}
     server._model_resource_manager.state_saved(uri)
-    engine_load = AsyncMock()
+    engine_load = AsyncMock(return_value={"type": "load_weights", "path": uri})
     monkeypatch.setitem(server._run_load_state.__globals__, "load_state", engine_load)
 
-    result = await server._run_load_state({"path": uri, "optimizer": True})
+    result = await server._run_load_state({"path": uri, "optimizer": optimizer})
 
     assert result == {"type": "load_weights", "path": uri}
-    engine_load.assert_not_awaited()
+    if optimizer:
+        engine_load.assert_not_awaited()
+    else:
+        engine_load.assert_awaited_once_with(
+            server._engine, str(tmp_path), server._saved_state_paths, uri, load_optimizer=False
+        )
 
 
 @pytest.mark.asyncio
