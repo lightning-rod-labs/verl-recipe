@@ -240,6 +240,13 @@ def make_branching_loss(config: DictConfig):
         if spec is None:
             raise RuntimeError("Internal RL TensorDict is missing normalized __tinker_loss_spec__ metadata")
         request_cfg = actor_config_for(spec)
+        if not data["response_mask"].any() and data["batch_num_tokens"] > 0:
+            # Padding-only ranks must join backward without rollout statistics,
+            # which reject empty local masks even when the global batch is valid.
+            log_probs = model_output["log_probs"]
+            values = log_probs.values() if log_probs.is_nested else log_probs
+            loss = values.sum() * 0.0
+            return loss, {"loss": Metric(value=loss, aggregation=AggregationType.SUM)}
         loss, metrics = ppo_loss(config=request_cfg, model_output=model_output, data=data, dp_group=dp_group)
         metrics["loss"] = Metric(value=loss, aggregation=AggregationType.SUM)
         return loss, metrics

@@ -106,7 +106,7 @@ def test_branching_loss_uses_isolated_request_configs(monkeypatch):
         normalize_tinker_loss_spec("dro", {"beta": 0.05}),
         normalize_tinker_loss_spec("importance_sampling"),
     ):
-        data = TensorDict({}, batch_size=[])
+        data = TensorDict({"response_mask": torch.ones(1, 1)}, batch_size=[1])
         tu.assign_non_tensor_data(data, "__tinker_loss_spec__", spec)
         loss_fn(model_output={}, data=data)
 
@@ -152,7 +152,7 @@ def test_custom_from_config_preserves_isolated_startup_actor_config(monkeypatch)
     monkeypatch.setattr("verl_tinker.backends._loss.ppo_loss", fake_ppo_loss)
     loss_fn = make_branching_loss(startup)
     for _ in range(2):
-        data = TensorDict({}, batch_size=[])
+        data = TensorDict({"response_mask": torch.ones(1, 1)}, batch_size=[1])
         tu.assign_non_tensor_data(data, "__tinker_loss_spec__", {"name": "custom_from_config"})
         loss_fn(model_output={}, data=data)
 
@@ -177,7 +177,7 @@ def _capture_request_configs(monkeypatch, *specs):
     monkeypatch.setattr("verl_tinker.backends._loss.ppo_loss", fake_ppo_loss)
     loss_fn = make_branching_loss(_branching_config())
     for spec in specs:
-        data = TensorDict({}, batch_size=[])
+        data = TensorDict({"response_mask": torch.ones(1, 1)}, batch_size=[1])
         tu.assign_non_tensor_data(data, "__tinker_loss_spec__", spec)
         loss_fn(model_output={}, data=data)
     return captured

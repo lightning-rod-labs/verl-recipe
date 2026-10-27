@@ -334,7 +334,8 @@ class TinkerServer:
     async def _run_load_state(self, req: dict) -> dict:
         uri = req.get("path", "")
         self._resolve_load_path(uri)
-        if self._model_resource_manager.should_skip_state_load(uri):
+        # Weights-only loads also clear gradients, even when the weights already match.
+        if req.get("optimizer", True) and self._model_resource_manager.should_skip_state_load(uri):
             logger.info(
                 "[model_resource_manager] skipping load path=%s actor_id=%s reason=already_loaded",
                 uri,

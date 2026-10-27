@@ -111,8 +111,8 @@ class ModelResourceManager:
     """Tracks which actor weights are resident in the single mutable rollout.
 
     IDs describe weight identity only. Optimizer and gradient state are deliberately
-    outside this manager; callers may therefore choose to skip a state load whenever
-    the saved actor ID already matches the current actor ID.
+    outside this manager. Loaders must preserve optimizer and gradient semantics
+    independently of whether the saved actor ID matches.
     """
 
     def __init__(
